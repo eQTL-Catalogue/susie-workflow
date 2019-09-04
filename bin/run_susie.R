@@ -1,10 +1,9 @@
-library("SNPRelate")
-library("GDSArray")
-library("devtools")
-library("ggplot2")
-library("susieR")
-library("optparse")
-load_all("../eQTLUtils/")
+suppressPackageStartupMessages(library("SNPRelate"))
+suppressPackageStartupMessages(library("GDSArray"))
+suppressPackageStartupMessages(library("devtools"))
+suppressPackageStartupMessages(library("susieR"))
+suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("optparse"))
 
 option_list <- list(
   #TODO look around if there is a package recognizing delimiter in dataset
@@ -25,13 +24,15 @@ option_list <- list(
   optparse::make_option(c("--cisdistance"), type="integer", default=1000000, 
                         help="Cis distance in bases from center of gene. [default \"%default\"]", metavar = "number"),
   optparse::make_option(c("--chunk"), type="character", default="1 1", 
-                        help="Perform analysis in chunks. Eg value 5 10 would indicate that phenotypes are split into 10 chunks and the 5th one of those will be processed. [default \"%default\"]", metavar = "type")
+                        help="Perform analysis in chunks. Eg value 5 10 would indicate that phenotypes are split into 10 chunks and the 5th one of those will be processed. [default \"%default\"]", metavar = "type"),
+  optparse::make_option(c("--eqtlutils"), type="character", default=NULL,
+              help="Optional path to the eQTLUtils R package location. If not specified then eQTLUtils is assumed to be installed in the container. [default \"%default\"]", metavar = "type")
 )
 
 opt <- optparse::parse_args(optparse::OptionParser(option_list=option_list))
 
 #Debugging
-if(TRUE){
+if(FALSE){
   opt = list(phenotype_list = "results/finemapping/Alasoo_2018/naive_qtl_gene_list.txt",
              cisdistance = 500000,
              gds_file = "results/finemapping/genotypes/Alasoo_2018_GRCh38.filtered.gds",
@@ -40,8 +41,14 @@ if(TRUE){
              sample_meta = "../SampleArcheology/studies/cleaned/Alasoo_2018.tsv",
              phenotype_meta = "~/annotations/eQTLCatalogue/v0.1/phenotype_metadata/gene_counts_Ensembl_96_phenotype_metadata.tsv.gz",
              chunk = "3 200",
-             outdir = "./finemapping_output"
+             outdir = "./finemapping_output",
+             eqtlutils = "../eQTLUtils/"
   )
+}
+
+#Load eQTLUtils
+if (!is.null(opt$eqtlutils)){
+  devtools::load_all(opt$eqtlutils)
 }
 
 #Print all options
@@ -123,7 +130,7 @@ phenotype_list = readr::read_tsv(opt$phenotype_list, col_types = "c", col_names 
 expression_matrix = readr::read_tsv(opt$expression_matrix)
 sample_metadata = utils::read.csv(opt$sample_meta, sep = '\t', stringsAsFactors = F)
 phenotype_meta = readr::read_delim(opt$phenotype_meta, delim = "\t", col_types = "ccccciiicciidi")
-variant_info = importVariantInformationFromGDS(opt$gds_file)
+variant_info = eQTLUtils::importVariantInformationFromGDS(opt$gds_file)
 covariates_matrix = importQtlmapCovariates(opt$covariates)
 
 #Set parameters
@@ -132,7 +139,7 @@ gds_file = opt$gds_file
 study_id = sample_metadata$study[1]
 
 #Make a SummarizedExperiment of the expression data
-se = eQTLUtils::makeSummarizedExperimentFromCountMatrix(assay = count_matrix, 
+se = eQTLUtils::makeSummarizedExperimentFromCountMatrix(assay = expression_matrix, 
                                                          row_data = phenotype_meta, 
                                                          col_data = sample_metadata, 
                                                          quant_method = "gene_counts")
