@@ -67,7 +67,8 @@ process run_susie{
      --chunk '${batch_index} ${params.n_batches}'\
      --cisdistance ${params.cisdistance}\
      --outfile 'finemapping_results.${batch_index}_${params.n_batches}.txt'\
-     --qtl_group ${params.qtl_group}
+     --qtl_group ${params.qtl_group}\
+     --eqtlutils ${params.eqtlutils}
     """
 }
 
