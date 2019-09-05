@@ -38,7 +38,7 @@ process vcf_to_gds{
 
     script:
     """
-    Rscript bin/vcf_to_gds.R --vcf ${input_vcf} --gds study_genotypes.gds
+    Rscript $baseDir/bin/vcf_to_gds.R --vcf ${input_vcf} --gds study_genotypes.gds
     """
 }
 
@@ -58,7 +58,7 @@ process run_susie{
 
     script:
     """
-    Rscript bin/run_susie.R --expression_matrix ${expression_matrix}\
+    Rscript $baseDir/bin/run_susie.R --expression_matrix ${expression_matrix}\
      --phenotype_meta ${phenotype_meta}\
      --sample_meta ${sample_meta}\
      --phenotype_list ${phenotype_list}\
