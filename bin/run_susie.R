@@ -19,8 +19,10 @@ option_list <- list(
                         help="Raw genotypes in gds format.", metavar = "type"),
   optparse::make_option(c("--covariates"), type="character", default=NULL,
                         help="Path to covariates file in QTLtools format.", metavar = "type"),
-  optparse::make_option(c("--outdir"), type="character", default="./finemapping_output",
-                        help="Path to the output directory.", metavar = "type"),
+  optparse::make_option(c("--outfile"), type="character", default="./finemapping_output.rds",
+                        help="Name of the output file.", metavar = "type"),
+  optparse::make_option(c("--qtl_group"), type="character", default=NULL,
+                        help="Value of the current qtl_group.", metavar = "type"),
   optparse::make_option(c("--cisdistance"), type="integer", default=1000000, 
                         help="Cis distance in bases from center of gene. [default \"%default\"]", metavar = "number"),
   optparse::make_option(c("--chunk"), type="character", default="1 1", 
@@ -41,8 +43,9 @@ if(FALSE){
              sample_meta = "../SampleArcheology/studies/cleaned/Alasoo_2018.tsv",
              phenotype_meta = "~/annotations/eQTLCatalogue/v0.1/phenotype_metadata/gene_counts_Ensembl_96_phenotype_metadata.tsv.gz",
              chunk = "3 200",
-             outdir = "./finemapping_output",
-             eqtlutils = "../eQTLUtils/"
+             outfile = "./finemapping_output.rds",
+             eqtlutils = "../eQTLUtils/",
+             qtl_group = "macrophage_naive"
   )
 }
 
@@ -152,19 +155,11 @@ selected_chunk = splitIntoChunks(chunk_id, n_chunks, length(phenotype_list$pheno
 selected_phenotypes = phenotype_list$phenotype_id[selected_chunk] %>% setNames(as.list(.), .)
 
 #Split by qtl_group
-qtl_groups = unique(se$qtl_group) %>% setNames(as.list(.),.)
-group_se_list = purrr::map(qtl_groups, ~eQTLUtils::subsetSEByColumnValue(se, "qtl_group", .))
+assertthat::assert_that(opt$qtl_group %in% unique(se$qtl_group))
+selected_qtl_group = eQTLUtils::subsetSEByColumnValue(se, "qtl_group", opt$qtl_group)
 
 #Apply finemapping to all genes
-results = list()
-for (qtl_group in names(group_se_list)){
-  message("Current QTL group is: ", qtl_group)
-  results[[qtl_group]] = purrr::map(selected_phenotypes[1:2], ~finemapPhenotype(., group_se_list[[qtl_group]], variant_info, gds_file, covariates_matrix, cis_distance))
-}
-
+results = purrr::map(selected_phenotypes, ~finemapPhenotype(., selected_qtl_group, 
+                                                            variant_info, gds_file, covariates_matrix, cis_distance))
 #Save results to disk
-dir.create(opt$outdir, showWarnings = FALSE)
-output_path = file.path(opt$outdir, paste0(study_id, ".", chunk_id, "_",n_chunks,".rds"))
-saveRDS(results, output_path)
-
-
+saveRDS(results, opt$outfile)
