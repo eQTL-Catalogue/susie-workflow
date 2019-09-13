@@ -1,60 +1,32 @@
-Channel
-    .fromPath(params.vcf)
-    .ifEmpty { exit 1, "VCF genotype file not found: ${params.vcf}" } 
-    .set { genotype_vcf }
-
-Channel
-    .fromPath(params.expression_matrix)
-    .ifEmpty { exit 1, "VCF genotype file not found: ${params.expression_matrix}" } 
-    .set { expression_matrix_ch }
-
-Channel
-    .fromPath(params.phenotype_meta)
-    .ifEmpty { exit 1, "VCF genotype file not found: ${params.phenotype_meta}" } 
-    .set { phenotype_meta_ch }
-
-Channel
-    .fromPath(params.sample_meta)
-    .ifEmpty { exit 1, "VCF genotype file not found: ${params.sample_meta}" } 
-    .set { sample_meta_ch }
-
-Channel
-    .fromPath(params.phenotype_list)
-    .ifEmpty { exit 1, "VCF genotype file not found: ${params.phenotype_list}" } 
-    .set { phenotype_list_ch }
-
-Channel
-    .fromPath(params.covariates_file)
-    .ifEmpty { exit 1, "VCF genotype file not found: ${params.covariates}" } 
-    .set { covariates_file_ch }
+// study	qtl_group	expression_matrix	phenotype_meta	sample_meta	vcf	phenotype_list	covariates
+Channel.fromPath(params.qtl_results)
+    .ifEmpty { error "Cannot find any qtl_results file in: ${params.qtl_results}" }
+    .splitCsv(header: true, sep: '\t', strip: true)
+    .map{row -> [ row.study, row.qtl_group, file(row.expression_matrix), file(row.phenotype_meta), file(row.sample_meta), file(row.vcf), file(row.phenotype_list), file(row.covariates)]}
+    .set { qtl_results_ch }
 
 process vcf_to_gds{
 
     input:
-    file input_vcf from genotype_vcf
+    set study, qtl_group, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates) from qtl_results_ch
 
     output:
-    file "study_genotypes.gds" into genotype_gds_ch
+    set study, qtl_group, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file("${vcf.simpleName}.gds") into susie_input_ch
 
     script:
     """
-    Rscript $baseDir/bin/vcf_to_gds.R --vcf ${input_vcf} --gds study_genotypes.gds
+    Rscript $baseDir/bin/vcf_to_gds.R --vcf ${vcf} --gds ${vcf.simpleName}.gds
     """
 }
 
 process run_susie{
 
     input:
-    file gds_file from genotype_gds_ch
-    file expression_matrix from expression_matrix_ch
-    file phenotype_meta from phenotype_meta_ch
-    file sample_meta from sample_meta_ch
-    file phenotype_list from phenotype_list_ch
-    file covariates_file from covariates_file_ch
+    set study, qtl_group, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file(gds) from susie_input_ch
     each batch_index from 1..params.n_batches
 
     output:
-    file("finemapping_results.${batch_index}_${params.n_batches}.txt") into finemapping_ch
+    file("${study}.${qtl_group}.${batch_index}_${params.n_batches}.txt") into finemapping_ch
 
     script:
     """
@@ -62,13 +34,17 @@ process run_susie{
      --phenotype_meta ${phenotype_meta}\
      --sample_meta ${sample_meta}\
      --phenotype_list ${phenotype_list}\
-     --covariates ${covariates_file}\
-     --gds_file ${gds_file}\
+     --covariates ${covariates}\
+     --gds_file ${gds}\
      --chunk '${batch_index} ${params.n_batches}'\
      --cisdistance ${params.cisdistance}\
-     --outfile 'finemapping_results.${batch_index}_${params.n_batches}.txt'\
+     --outfile '${study}.${qtl_group}.${batch_index}_${params.n_batches}.txt'\
      --qtl_group ${params.qtl_group}\
      --eqtlutils ${params.eqtlutils}
     """
+}
+
+workflow.onComplete { 
+	println ( workflow.success ? "Done!" : "Oops ... something went wrong" )
 }
 

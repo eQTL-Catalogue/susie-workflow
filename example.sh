@@ -12,3 +12,12 @@ nextflow run main.nf --cisdistance 500000 \
  --qtl_group macrophage_naive\
  --eqtlutils '/gpfs/hpc/home/a72094/projects/eQTLUtils'
  -resume
+
+nextflow run main.nf --qtl_results example_input.tsv\
+ --cisdistance 500000 \
+ --n_batches 200\
+ --eqtlutils '/gpfs/hpc/home/a72094/projects/eQTLUtils'\
+ -resume\
+ -profile finemapping\
+ -executor.queueSize 1
+
