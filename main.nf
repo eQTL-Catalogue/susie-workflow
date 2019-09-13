@@ -39,7 +39,7 @@ process run_susie{
      --chunk '${batch_index} ${params.n_batches}'\
      --cisdistance ${params.cisdistance}\
      --outfile '${study}.${qtl_group}.${batch_index}_${params.n_batches}.txt'\
-     --qtl_group ${params.qtl_group}\
+     --qtl_group ${qtl_group}\
      --eqtlutils ${params.eqtlutils}
     """
 }
