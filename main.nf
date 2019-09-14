@@ -28,7 +28,7 @@ process run_susie{
     each batch_index from 1..params.n_batches
 
     output:
-    file("${study}.${qtl_group}.${batch_index}_${params.n_batches}.txt") into finemapping_ch
+    file("${study}.${qtl_group}.${batch_index}_${params.n_batches}.rds") into finemapping_ch
 
     script:
     """
