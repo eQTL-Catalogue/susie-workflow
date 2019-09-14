@@ -15,6 +15,8 @@ option_list <- list(
                         help="Expression matrix file path with gene phenotype-id in rownames and sample-is in columnnames", metavar = "type"),
   optparse::make_option(c("--phenotype_list"), type="character", default=NULL,
                         help="Path to the phenotype list file.", metavar = "type"),
+  optparse::make_option(c("--phenotype_list_type"), type="character", default="permuted",
+                        help="Type of the phenotype list: 'permuted' or 'nominal'", metavar = "type"),
   optparse::make_option(c("--gds_file"), type="character", default=NULL,
                         help="Raw genotypes in gds format.", metavar = "type"),
   optparse::make_option(c("--covariates"), type="character", default=NULL,
@@ -129,12 +131,19 @@ finemapPhenotype <- function(phenotype_id, se, variant_info, gds_file, covariate
 
 
 #Import all files
-phenotype_list = readr::read_tsv(opt$phenotype_list, col_types = "c", col_names = "phenotype_id")
 expression_matrix = readr::read_tsv(opt$expression_matrix)
 sample_metadata = utils::read.csv(opt$sample_meta, sep = '\t', stringsAsFactors = F)
 phenotype_meta = readr::read_delim(opt$phenotype_meta, delim = "\t", col_types = "ccccciiicciidi")
 variant_info = eQTLUtils::importVariantInformationFromGDS(opt$gds_file)
 covariates_matrix = importQtlmapCovariates(opt$covariates)
+
+#Import list of phenotypes for finemapping
+if (opt$phenotype_list_type == "permuted"){
+  phenotype_table = eQTLUtils::importQTLtoolsTable(opt$phenotype_list)
+  filtered_list = dplyr::filter(phenotype_table, p_fdr < 0.01)
+  phenotype_list = dplyr::semi_join(phenotype_meta, filtered_list, by = "group_id")
+  message("Number of phenotypes included for analysis: ", nrow(phenotype_list))
+}
 
 #Set parameters
 cis_distance = opt$cisdistance
@@ -154,7 +163,7 @@ n_chunks = chunk_vector[2]
 selected_chunk = splitIntoChunks(chunk_id, n_chunks, length(phenotype_list$phenotype_id))
 selected_phenotypes = phenotype_list$phenotype_id[selected_chunk] %>% setNames(as.list(.), .)
 
-#Split by qtl_group
+#Check that the qtl_group is valid and subset
 assertthat::assert_that(opt$qtl_group %in% unique(se$qtl_group))
 selected_qtl_group = eQTLUtils::subsetSEByColumnValue(se, "qtl_group", opt$qtl_group)
 
