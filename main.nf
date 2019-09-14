@@ -20,6 +20,8 @@ process vcf_to_gds{
 }
 
 process run_susie{
+    publishDir "${params.outdir}/susie/${study}_${qtl_group}", mode: 'copy'
+
 
     input:
     set study, qtl_group, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file(gds) from susie_input_ch
