@@ -20,7 +20,7 @@ process vcf_to_gds{
 }
 
 process run_susie{
-    publishDir "${params.outdir}/susie/${study}_${qtl_group}", mode: 'copy'
+    publishDir "${params.outdir}/susie/${study}", mode: 'copy'
 
 
     input:
@@ -40,7 +40,7 @@ process run_susie{
      --gds_file ${gds}\
      --chunk '${batch_index} ${params.n_batches}'\
      --cisdistance ${params.cisdistance}\
-     --outfile '${study}.${qtl_group}.${batch_index}_${params.n_batches}.txt'\
+     --outfile '${study}.${qtl_group}.${batch_index}_${params.n_batches}.rds'\
      --qtl_group ${qtl_group}\
      --eqtlutils ${params.eqtlutils}
     """
