@@ -28,7 +28,7 @@ process run_susie{
     each batch_index from 1..params.n_batches
 
     output:
-    file("${study}.${qtl_group}.${batch_index}_${params.n_batches}.rds") into finemapping_ch
+    set file("${study}.${qtl_group}.${batch_index}_${params.n_batches}.rds"), file("${study}.${qtl_group}.${batch_index}_${params.n_batches}.txt") into finemapping_ch
 
     script:
     """
@@ -40,7 +40,8 @@ process run_susie{
      --gds_file ${gds}\
      --chunk '${batch_index} ${params.n_batches}'\
      --cisdistance ${params.cisdistance}\
-     --outfile '${study}.${qtl_group}.${batch_index}_${params.n_batches}.rds'\
+     --outrds '${study}.${qtl_group}.${batch_index}_${params.n_batches}.rds'\
+     --outtxt '${study}.${qtl_group}.${batch_index}_${params.n_batches}.txt'\
      --qtl_group ${qtl_group}\
      --eqtlutils ${params.eqtlutils}
     """

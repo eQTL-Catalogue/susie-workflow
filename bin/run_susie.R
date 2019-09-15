@@ -21,8 +21,10 @@ option_list <- list(
                         help="Raw genotypes in gds format.", metavar = "type"),
   optparse::make_option(c("--covariates"), type="character", default=NULL,
                         help="Path to covariates file in QTLtools format.", metavar = "type"),
-  optparse::make_option(c("--outfile"), type="character", default="./finemapping_output.rds",
-                        help="Name of the output file.", metavar = "type"),
+  optparse::make_option(c("--outrds"), type="character", default="./finemapping_output.rds",
+                        help="Name of the output .rds file.", metavar = "type"),
+  optparse::make_option(c("--outtxt"), type="character", default="./finemapping_output.txt",
+                        help="Name of the output .txt file.", metavar = "type"),
   optparse::make_option(c("--qtl_group"), type="character", default=NULL,
                         help="Value of the current qtl_group.", metavar = "type"),
   optparse::make_option(c("--cisdistance"), type="integer", default=1000000, 
@@ -126,7 +128,23 @@ finemapPhenotype <- function(phenotype_id, se, variant_info, gds_file, covariate
                           scaled_prior_variance = 0.1,
                           verbose = TRUE,
                           compute_univariate_zscore = TRUE)
+  fitted$variant_id = rownames(gt_matrix)
   return(fitted)
+}
+
+extractCredibleSets <- function(susie_object){
+  credible_sets = susie_object$sets$cs
+  cs_list = list()
+  for (index in seq_along(credible_sets)){
+    cs_variants = credible_sets[[index]]
+    cs_list[[index]] = dplyr::data_frame(cs_id = paste0("CS", index),
+                                         pip = susie_object$pip[cs_variants],
+                                         variant_id = susie_object$variant_id[cs_variants],
+                                         z = susie_object$z[cs_variants],
+                                         converged = susie_object$converged)
+  }
+  df = purrr::map_df(cs_list, identity)
+  return(df)
 }
 
 
@@ -171,4 +189,10 @@ selected_qtl_group = eQTLUtils::subsetSEByColumnValue(se, "qtl_group", opt$qtl_g
 results = purrr::map(selected_phenotypes, ~finemapPhenotype(., selected_qtl_group, 
                                                             variant_info, gds_file, covariates_matrix, cis_distance))
 #Save results to disk
-saveRDS(results, opt$outfile)
+saveRDS(results, opt$outrds)
+
+#Extraxct credible sets from finemapping results
+cs_df = purrr::map_df(results, extractCredibleSets, .id = "phenotype_id")
+write.table(cs_df, opt$outtxt, sep = "\t", quote = FALSE, row.names = FALSE)
+
+
