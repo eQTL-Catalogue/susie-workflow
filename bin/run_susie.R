@@ -174,7 +174,8 @@ study_id = sample_metadata$study[1]
 se = eQTLUtils::makeSummarizedExperimentFromCountMatrix(assay = expression_matrix, 
                                                          row_data = phenotype_meta, 
                                                          col_data = sample_metadata, 
-                                                         quant_method = "gene_counts")
+                                                         quant_method = "gene_counts",
+                                                         reformat = FALSE)
 
 #Split phenotype list into chunks
 chunk_vector = strsplit(opt$chunk, split = " ") %>% unlist() %>% as.numeric()
