@@ -39,17 +39,19 @@ opt <- optparse::parse_args(optparse::OptionParser(option_list=option_list))
 
 #Debugging
 if(FALSE){
-  opt = list(phenotype_list = "results/finemapping/Alasoo_2018/naive_qtl_gene_list.txt",
-             cisdistance = 500000,
-             gds_file = "results/finemapping/genotypes/Alasoo_2018_GRCh38.filtered.gds",
-             covariates = "results/finemapping/Alasoo_2018/PCA/Alasoo_2018_ge_macrophage_naive/Alasoo_2018_ge_macrophage_naive.covariates.txt",
-             expression_matrix = "results/finemapping/Alasoo_2018.gene_counts_cqn_norm.tsv",
-             sample_meta = "../SampleArcheology/studies/cleaned/Alasoo_2018.tsv",
-             phenotype_meta = "~/annotations/eQTLCatalogue/v0.1/phenotype_metadata/gene_counts_Ensembl_96_phenotype_metadata.tsv.gz",
+  opt = list(phenotype_list = "testdata/monocyte_LPS2.permuted.txt.gz",
+             cisdistance = 200000,
+             gds_file = "testdata/Fairfax_2014_GRCh38.filtered.renamed.gds",
+             covariates = "testdata/monocyte_LPS2.covariates.txt",
+             expression_matrix = "testdata/Fairfax_2014.HumanHT-12_V4_norm_exprs.tsv.gz",
+             sample_meta = "testdata/Fairfax_2014.tsv",
+             phenotype_meta = "testdata/HumanHT-12_V4_Ensembl_96_phenotype_metadata.tsv.gz",
              chunk = "3 200",
-             outfile = "./finemapping_output.rds",
+             outrds = "./finemapping_output.rds",
+             outtxt = "./finemapping_output.rds",
              eqtlutils = "../eQTLUtils/",
-             qtl_group = "macrophage_naive"
+             qtl_group = "monocyte_LPS2",
+             phenotype_list_type = "permuted"
   )
 }
 
