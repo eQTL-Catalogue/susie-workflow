@@ -22,7 +22,7 @@ process vcf_to_gds{
     } else {
         """
         Rscript $baseDir/bin/vcf_to_gds.R --vcf ${vcf} --gds ${vcf.simpleName}.gds
-        csvtk filter -t -H -f '14=1' ${phenotype_list} > ${phenotype_list.simpleName}.lead_variants.txt
+        zcat ${phenotype_list} | awk '{if(\$14 == 1) print \$0}' > ${phenotype_list.simpleName}.lead_variants.txt
         """
     }
 }
