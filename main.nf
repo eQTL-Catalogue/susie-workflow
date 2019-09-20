@@ -27,8 +27,6 @@ process vcf_to_gds{
     }
 }
 
-process 
-
 process run_susie{
     publishDir "${params.outdir}/susie/${study}", mode: 'copy'
 
