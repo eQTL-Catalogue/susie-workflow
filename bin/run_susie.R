@@ -15,8 +15,6 @@ option_list <- list(
                         help="Expression matrix file path with gene phenotype-id in rownames and sample-is in columnnames", metavar = "type"),
   optparse::make_option(c("--phenotype_list"), type="character", default=NULL,
                         help="Path to the phenotype list file.", metavar = "type"),
-  optparse::make_option(c("--phenotype_list_type"), type="character", default="permuted",
-                        help="Type of the phenotype list: 'permuted' or 'nominal'", metavar = "type"),
   optparse::make_option(c("--gds_file"), type="character", default=NULL,
                         help="Raw genotypes in gds format.", metavar = "type"),
   optparse::make_option(c("--covariates"), type="character", default=NULL,
@@ -32,7 +30,10 @@ option_list <- list(
   optparse::make_option(c("--chunk"), type="character", default="1 1", 
                         help="Perform analysis in chunks. Eg value 5 10 would indicate that phenotypes are split into 10 chunks and the 5th one of those will be processed. [default \"%default\"]", metavar = "type"),
   optparse::make_option(c("--eqtlutils"), type="character", default=NULL,
-              help="Optional path to the eQTLUtils R package location. If not specified then eQTLUtils is assumed to be installed in the container. [default \"%default\"]", metavar = "type")
+              help="Optional path to the eQTLUtils R package location. If not specified then eQTLUtils is assumed to be installed in the container. [default \"%default\"]", metavar = "type"),
+  optparse::make_option(c("--permuted"), type="character", default="true",
+                        help="If 'false', lead varaints were exptracted from nominal p-value files. [default \"%default\"]", metavar = "type")
+  
 )
 
 opt <- optparse::parse_args(optparse::OptionParser(option_list=option_list))
@@ -158,10 +159,21 @@ variant_info = eQTLUtils::importVariantInformationFromGDS(opt$gds_file)
 covariates_matrix = importQtlmapCovariates(opt$covariates)
 
 #Import list of phenotypes for finemapping
-if (opt$phenotype_list_type == "permuted"){
+if (opt$permuted == "true"){
   phenotype_table = eQTLUtils::importQTLtoolsTable(opt$phenotype_list)
   filtered_list = dplyr::filter(phenotype_table, p_fdr < 0.01)
   phenotype_list = dplyr::semi_join(phenotype_meta, filtered_list, by = "group_id")
+  message("Number of phenotypes included for analysis: ", nrow(phenotype_list))
+} else {
+  nominal_leads = read.table(opt$phenotype_list, stringsAsFactors = FALSE) %>%
+    dplyr::transmute(phenotype_id = V1, n_variants = V6, p_nominal= V12) %>%
+    dplyr::as_tibble() %>%
+    dplyr::group_by(phenotype_id) %>%
+    dplyr::mutate(p_bonferroni = p.adjust(p_nominal, n = n_variants)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(p_fdr = p.adjust(p_bonferroni, method = "fdr")) %>%
+    dplyr::filter(p_fdr < 0.1) #More lenient threshold for bonferroni correction
+  phenotype_list = dplyr::semi_join(phenotype_meta, nominal_leads, by = "phenotype_id")
   message("Number of phenotypes included for analysis: ", nrow(phenotype_list))
 }
 

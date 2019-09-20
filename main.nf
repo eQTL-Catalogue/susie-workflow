@@ -11,17 +11,26 @@ process vcf_to_gds{
     set study, qtl_group, quant_method, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates) from qtl_results_ch
 
     output:
-    set study, qtl_group, quant_method, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file("${vcf.simpleName}.gds") into susie_input_ch
+    set study, qtl_group, quant_method, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file("${phenotype_list.simpleName}.lead_variants.txt"), file(covariates), file("${vcf.simpleName}.gds") into susie_input_ch
 
     script:
-    """
-    Rscript $baseDir/bin/vcf_to_gds.R --vcf ${vcf} --gds ${vcf.simpleName}.gds
-    """
+    if(params.permuted){
+        """
+        Rscript $baseDir/bin/vcf_to_gds.R --vcf ${vcf} --gds ${vcf.simpleName}.gds
+        cat ${phenotype_list} > ${phenotype_list.simpleName}.lead_variants.txt
+        """
+    } else {
+        """
+        Rscript $baseDir/bin/vcf_to_gds.R --vcf ${vcf} --gds ${vcf.simpleName}.gds
+        csvtk filter -t -H -f '14=1' ${phenotype_list} > ${phenotype_list.simpleName}.lead_variants.txt
+        """
+    }
 }
+
+process 
 
 process run_susie{
     publishDir "${params.outdir}/susie/${study}", mode: 'copy'
-
 
     input:
     set study, qtl_group, quant_method, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file(gds) from susie_input_ch
@@ -43,7 +52,8 @@ process run_susie{
      --outrds '${study}.${qtl_group}.${quant_method}.${batch_index}_${params.n_batches}.rds'\
      --outtxt '${study}.${qtl_group}.${quant_method}.${batch_index}_${params.n_batches}.txt'\
      --qtl_group ${qtl_group}\
-     --eqtlutils ${params.eqtlutils}
+     --eqtlutils ${params.eqtlutils}\
+     --permuted ${params.permuted}
     """
 }
 
