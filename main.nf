@@ -6,7 +6,7 @@ Channel.fromPath(params.qtl_results)
     .set { qtl_results_ch }
 
 process vcf_to_gds{
-    publishDir "${params.outdir}/lead_variants/${study}/", mode: 'copy', , pattern: "*.lead_variants.txt"
+    publishDir "${params.outdir}/lead_variants/${study}/", mode: 'copy', pattern: "*.lead_variants.txt"
 
     input:
     set study, qtl_group, quant_method, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates) from qtl_results_ch
@@ -29,8 +29,8 @@ process vcf_to_gds{
 }
 
 process run_susie{
-    publishDir "${params.outdir}/susie/${study}/rds", mode: 'copy', , pattern: "*.rds"
-    publishDir "${params.outdir}/susie/${study}/txt", mode: 'copy', , pattern: "*.txt"
+    publishDir "${params.outdir}/susie/${study}/rds", mode: 'copy', pattern: "*.rds"
+    publishDir "${params.outdir}/susie/${study}/txt", mode: 'copy', pattern: "*.txt"
 
     input:
     set study, qtl_group, quant_method, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file(gds) from susie_input_ch
