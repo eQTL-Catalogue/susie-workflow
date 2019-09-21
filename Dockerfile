@@ -4,4 +4,4 @@ LABEL authors="Kaur Alasoo" \
 
 RUN R -e "BiocManager::install(c('GDSArray','devtools', 'SNPRelate', 'dplyr','purrr', 'readr', 'optparse','SummarizedExperiment','expm','matrixStats','lumi','limma','tidyr','cqn','plotly'))"
 RUN R -e "devtools::install_github('stephenslab/susieR@0.8.0')"
-RUN R -e "devtools::install_github('kauralasoo/eQTLUtils')"
+RUN R -e "devtools::install_github('kauralasoo/eQTLUtils@v0.1')"
