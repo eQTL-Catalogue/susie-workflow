@@ -57,6 +57,9 @@ if(FALSE){
 }
 
 #Load eQTLUtils
+if(opt$eqtlutils == "null"){
+  opt$eqtlutils = NULL
+}
 if (!is.null(opt$eqtlutils)){
   devtools::load_all(opt$eqtlutils)
 }
