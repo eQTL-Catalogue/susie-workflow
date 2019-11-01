@@ -12,18 +12,18 @@ process vcf_to_gds{
     set study, qtl_group, quant_method, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates) from qtl_results_ch
 
     output:
-    set study, qtl_group, quant_method, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file("${phenotype_list.simpleName}.lead_variants.txt"), file(covariates), file("${vcf.simpleName}.gds") into susie_input_ch
+    set study, qtl_group, quant_method, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file("${phenotype_list.simpleName}.lead_variants.txt.gz"), file(covariates), file("${vcf.simpleName}.gds") into susie_input_ch
 
     script:
     if(params.permuted){
         """
         Rscript $baseDir/bin/vcf_to_gds.R --vcf ${vcf} --gds ${vcf.simpleName}.gds
-        cat ${phenotype_list} > ${phenotype_list.simpleName}.lead_variants.txt
+        zcat ${phenotype_list} | gzip > ${phenotype_list.simpleName}.lead_variants.txt.gz
         """
     } else {
         """
         Rscript $baseDir/bin/vcf_to_gds.R --vcf ${vcf} --gds ${vcf.simpleName}.gds
-        zcat ${phenotype_list} | awk '{if(\$14 == 1) print \$0}' > ${phenotype_list.simpleName}.lead_variants.txt.gz
+        zcat ${phenotype_list} | awk '{if(\$14 == 1) print \$0}' | gzip > ${phenotype_list.simpleName}.lead_variants.txt.gz
         """
     }
 }
