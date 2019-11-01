@@ -52,7 +52,7 @@ if(FALSE){
              outtxt = "./finemapping_output.rds",
              eqtlutils = "../eQTLUtils/",
              qtl_group = "monocyte_LPS2",
-             phenotype_list_type = "permuted"
+             permuted = "true"
   )
 }
 

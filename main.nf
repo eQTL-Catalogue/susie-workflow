@@ -23,7 +23,7 @@ process vcf_to_gds{
     } else {
         """
         Rscript $baseDir/bin/vcf_to_gds.R --vcf ${vcf} --gds ${vcf.simpleName}.gds
-        zcat ${phenotype_list} | awk '{if(\$14 == 1) print \$0}' > ${phenotype_list.simpleName}.lead_variants.txt
+        zcat ${phenotype_list} | awk '{if(\$14 == 1) print \$0}' > ${phenotype_list.simpleName}.lead_variants.txt.gz
         """
     }
 }
