@@ -32,7 +32,7 @@ option_list <- list(
   optparse::make_option(c("--eqtlutils"), type="character", default=NULL,
               help="Optional path to the eQTLUtils R package location. If not specified then eQTLUtils is assumed to be installed in the container. [default \"%default\"]", metavar = "type"),
   optparse::make_option(c("--permuted"), type="character", default="true",
-                        help="If 'false', lead varaints were exptracted from nominal p-value files. [default \"%default\"]", metavar = "type")
+                        help="If 'false', lead variants were extracted from nominal p-value files. [default \"%default\"]", metavar = "type")
   
 )
 

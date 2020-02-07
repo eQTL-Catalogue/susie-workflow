@@ -3,3 +3,4 @@ results
 testdata
 .Rproj.user
 *.Rproj
+.Rhistory
