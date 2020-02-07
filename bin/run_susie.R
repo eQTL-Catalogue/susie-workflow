@@ -3,6 +3,8 @@ suppressPackageStartupMessages(library("GDSArray"))
 suppressPackageStartupMessages(library("devtools"))
 suppressPackageStartupMessages(library("susieR"))
 suppressPackageStartupMessages(library("dplyr"))
+suppressPackageStartupMessages(library("stringr"))
+suppressPackageStartupMessages(library("tidyr"))
 suppressPackageStartupMessages(library("optparse"))
 
 option_list <- list(
@@ -19,8 +21,6 @@ option_list <- list(
                         help="Raw genotypes in gds format.", metavar = "type"),
   optparse::make_option(c("--covariates"), type="character", default=NULL,
                         help="Path to covariates file in QTLtools format.", metavar = "type"),
-  optparse::make_option(c("--outrds"), type="character", default="./finemapping_output.rds",
-                        help="Name of the output .rds file.", metavar = "type"),
   optparse::make_option(c("--outtxt"), type="character", default="./finemapping_output.txt",
                         help="Name of the output .txt file.", metavar = "type"),
   optparse::make_option(c("--qtl_group"), type="character", default=NULL,
@@ -48,8 +48,7 @@ if(FALSE){
              sample_meta = "testdata/Fairfax_2014.tsv",
              phenotype_meta = "testdata/HumanHT-12_V4_Ensembl_96_phenotype_metadata.tsv.gz",
              chunk = "3 200",
-             outrds = "./finemapping_output.rds",
-             outtxt = "./finemapping_output.rds",
+             outtxt = "./finemapping_output.txt",
              eqtlutils = "../eQTLUtils/",
              qtl_group = "monocyte_LPS2",
              permuted = "true"
@@ -143,14 +142,26 @@ extractCredibleSets <- function(susie_object){
   cs_list = list()
   for (index in seq_along(credible_sets)){
     cs_variants = credible_sets[[index]]
-    cs_list[[index]] = dplyr::data_frame(cs_id = paste0("CS", index),
+    cs_list[[index]] = dplyr::data_frame(cs_id = paste0("L", index),
                                          pip = susie_object$pip[cs_variants],
                                          variant_id = susie_object$variant_id[cs_variants],
                                          z = susie_object$z[cs_variants],
                                          converged = susie_object$converged)
   }
   df = purrr::map_df(cs_list, identity)
-  return(df)
+
+  #Extract purity values for all sets
+  purity_res = susie_object$sets$purity
+  set_ids = rownames(purity_res)
+  purity_df = dplyr::as_tibble(purity_res) %>%
+    dplyr::mutate(cs_id = rownames(purity_res))
+
+  if(nrow(df) > 0){
+    res_df = dplyr::left_join(df, purity_df, by = "cs_id")
+  } else{
+    res_df = df
+  }
+  return(res_df)
 }
 
 
@@ -206,11 +217,15 @@ selected_qtl_group = eQTLUtils::subsetSEByColumnValue(se, "qtl_group", opt$qtl_g
 #Apply finemapping to all genes
 results = purrr::map(selected_phenotypes, ~finemapPhenotype(., selected_qtl_group, 
                                                             variant_info, gds_file, covariates_matrix, cis_distance))
-#Save results to disk
-saveRDS(results, opt$outrds)
 
 #Extraxct credible sets from finemapping results
-cs_df = purrr::map_df(results, extractCredibleSets, .id = "phenotype_id")
-write.table(cs_df, opt$outtxt, sep = "\t", quote = FALSE, row.names = FALSE)
+cs_df = purrr::map_df(results, extractCredibleSets, .id = "phenotype_id") %>%
+  dplyr::group_by(phenotype_id, cs_id) %>%
+  dplyr::mutate(cs_size = n()) %>%
+  dplyr::ungroup() %>%
+  tidyr::separate(variant_id, c("chr", "pos", "ref", "alt"),sep = "_", remove = FALSE) %>%
+  dplyr::mutate(chr = stringr::str_remove_all(chr, "chr")) %>%
+  dplyr::transmute(phenotype_id, variant_id, cs_id, chr, pos, ref, alt, pip, z, cs_min_r2 = min.abs.corr, cs_avg_r2 = mean.abs.corr, cs_size)
+write.table(cs_df, opt$outtxt, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
 
 

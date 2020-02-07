@@ -29,15 +29,13 @@ process vcf_to_gds{
 }
 
 process run_susie{
-    publishDir "${params.outdir}/susie/${study}/rds", mode: 'copy', pattern: "*.rds"
-    publishDir "${params.outdir}/susie/${study}/txt", mode: 'copy', pattern: "*.txt"
 
     input:
     set study, qtl_group, quant_method, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file(gds) from susie_input_ch
     each batch_index from 1..params.n_batches
 
     output:
-    set file("${study}.${qtl_group}.${quant_method}.${batch_index}_${params.n_batches}.rds"), file("${study}.${qtl_group}.${quant_method}.${batch_index}_${params.n_batches}.txt") into finemapping_ch
+    set val("${study}.${qtl_group}.${quant_method}"), file("${study}.${qtl_group}.${quant_method}.${batch_index}_${params.n_batches}.txt") into finemapping_ch
 
     script:
     """
@@ -49,11 +47,25 @@ process run_susie{
      --gds_file ${gds}\
      --chunk '${batch_index} ${params.n_batches}'\
      --cisdistance ${params.cisdistance}\
-     --outrds '${study}.${qtl_group}.${quant_method}.${batch_index}_${params.n_batches}.rds'\
      --outtxt '${study}.${qtl_group}.${quant_method}.${batch_index}_${params.n_batches}.txt'\
      --qtl_group ${qtl_group}\
      --eqtlutils ${params.eqtlutils}\
      --permuted ${params.permuted}
+    """
+}
+
+process merge_susie{
+    publishDir "${params.outdir}/susie/${study}", mode: 'copy', pattern: "*.txt.gz"
+
+    input:
+    set study_qtl_group_quant, credible_set_batch_names from finemapping_ch.groupTuple()
+
+    output:
+    file file("${study_qtl_group_quant}.txt.gz") into susie_merged_ch
+
+    script:
+    """
+    cat ${credible_set_batch_names.join(' ')} | gzip > ${study_qtl_group_quant}.txt.gz
     """
 }
 
