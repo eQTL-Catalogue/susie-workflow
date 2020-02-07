@@ -65,7 +65,9 @@ process merge_susie{
 
     script:
     """
-    cat 'phenotype_id\tvariant_id\tcs_id\tchr\tpos\tref\talt\tpip\tz\tcs_min_r2\tcs_avg_r2\tcs_size\n' & cat ${credible_set_batch_names.join(' ')} | gzip > ${study_qtl_group_quant}.txt.gz
+    echo 'phenotype_id\tvariant_id\tcs_id\tchr\tpos\tref\talt\tpip\tz\tcs_min_r2\tcs_avg_r2\tcs_size\n' > ${study_qtl_group_quant}.txt
+    cat ${credible_set_batch_names.join(' ')} > ${study_qtl_group_quant}.txt
+    gzip ${study_qtl_group_quant}.txt
     """
 }
 
