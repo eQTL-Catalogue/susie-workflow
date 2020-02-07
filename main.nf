@@ -55,7 +55,7 @@ process run_susie{
 }
 
 process merge_susie{
-    publishDir "${params.outdir}/susie/${study}", mode: 'copy', pattern: "*.txt.gz"
+    publishDir "${params.outdir}/susie/", mode: 'copy', pattern: "*.txt.gz"
 
     input:
     set study_qtl_group_quant, credible_set_batch_names from finemapping_ch.groupTuple()
@@ -65,7 +65,7 @@ process merge_susie{
 
     script:
     """
-    cat ${credible_set_batch_names.join(' ')} | gzip > ${study_qtl_group_quant}.txt.gz
+    cat 'phenotype_id\tvariant_id\tcs_id\tchr\tpos\tref\talt\tpip\tz\tcs_min_r2\tcs_avg_r2\tcs_size\n' & cat ${credible_set_batch_names.join(' ')} | gzip > ${study_qtl_group_quant}.txt.gz
     """
 }
 
