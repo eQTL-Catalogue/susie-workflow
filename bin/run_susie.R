@@ -156,7 +156,7 @@ extractCredibleSets <- function(susie_object){
   purity_df = dplyr::as_tibble(purity_res) %>%
     dplyr::mutate(cs_id = rownames(purity_res))
 
-  if(nrow(df) > 0){
+  if(nrow(df) > 0 & nrow(purity_df) > 0){
     res_df = dplyr::left_join(df, purity_df, by = "cs_id")
   } else{
     res_df = df
@@ -218,14 +218,16 @@ selected_qtl_group = eQTLUtils::subsetSEByColumnValue(se, "qtl_group", opt$qtl_g
 results = purrr::map(selected_phenotypes, ~finemapPhenotype(., selected_qtl_group, 
                                                             variant_info, gds_file, covariates_matrix, cis_distance))
 
-#Extraxct credible sets from finemapping results
-cs_df = purrr::map_df(results, extractCredibleSets, .id = "phenotype_id") %>%
-  dplyr::group_by(phenotype_id, cs_id) %>%
-  dplyr::mutate(cs_size = n()) %>%
-  dplyr::ungroup() %>%
-  tidyr::separate(variant_id, c("chr", "pos", "ref", "alt"),sep = "_", remove = FALSE) %>%
-  dplyr::mutate(chr = stringr::str_remove_all(chr, "chr")) %>%
-  dplyr::transmute(phenotype_id, variant_id, cs_id, chr, pos, ref, alt, pip, z, cs_min_r2 = min.abs.corr, cs_avg_r2 = mean.abs.corr, cs_size)
+#Extract credible sets from finemapping results
+cs_df = purrr::map_df(results, extractCredibleSets, .id = "phenotype_id") 
+if(nrow(cs_df) > 0){
+  cs_df = dplyr::group_by(phenotype_id, cs_id) %>%
+    dplyr::mutate(cs_size = n()) %>%
+    dplyr::ungroup() %>%
+    tidyr::separate(variant_id, c("chr", "pos", "ref", "alt"),sep = "_", remove = FALSE) %>%
+    dplyr::mutate(chr = stringr::str_remove_all(chr, "chr")) %>%
+    dplyr::transmute(phenotype_id, variant_id, cs_id, chr, pos, ref, alt, pip, z, cs_min_r2 = min.abs.corr, cs_avg_r2 = mean.abs.corr, cs_size)
+}
 write.table(cs_df, opt$outtxt, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
 
 
