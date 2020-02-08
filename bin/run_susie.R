@@ -221,7 +221,7 @@ results = purrr::map(selected_phenotypes, ~finemapPhenotype(., selected_qtl_grou
 #Extract credible sets from finemapping results
 cs_df = purrr::map_df(results, extractCredibleSets, .id = "phenotype_id") 
 if(nrow(cs_df) > 0){
-  cs_df = dplyr::group_by(phenotype_id, cs_id) %>%
+  cs_df = dplyr::group_by(cs_df, phenotype_id, cs_id) %>%
     dplyr::mutate(cs_size = n()) %>%
     dplyr::ungroup() %>%
     tidyr::separate(variant_id, c("chr", "pos", "ref", "alt"),sep = "_", remove = FALSE) %>%
