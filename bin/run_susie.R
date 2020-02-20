@@ -1,11 +1,11 @@
-suppressPackageStartupMessages(library("SNPRelate"))
-suppressPackageStartupMessages(library("GDSArray"))
 suppressPackageStartupMessages(library("devtools"))
 suppressPackageStartupMessages(library("susieR"))
-suppressPackageStartupMessages(library("dplyr"))
 suppressPackageStartupMessages(library("stringr"))
-suppressPackageStartupMessages(library("tidyr"))
 suppressPackageStartupMessages(library("optparse"))
+suppressPackageStartupMessages(library("Rsamtools"))
+suppressPackageStartupMessages(library("readr"))
+suppressPackageStartupMessages(library("tidyr"))
+suppressPackageStartupMessages(library("dplyr"))
 
 option_list <- list(
   #TODO look around if there is a package recognizing delimiter in dataset
@@ -17,8 +17,8 @@ option_list <- list(
                         help="Expression matrix file path with gene phenotype-id in rownames and sample-is in columnnames", metavar = "type"),
   optparse::make_option(c("--phenotype_list"), type="character", default=NULL,
                         help="Path to the phenotype list file.", metavar = "type"),
-  optparse::make_option(c("--gds_file"), type="character", default=NULL,
-                        help="Raw genotypes in gds format.", metavar = "type"),
+  optparse::make_option(c("--genotype_matrix"), type="character", default=NULL,
+                        help="Genotype dosage matrix extracted from VCF.", metavar = "type"),
   optparse::make_option(c("--covariates"), type="character", default=NULL,
                         help="Path to covariates file in QTLtools format.", metavar = "type"),
   optparse::make_option(c("--outtxt"), type="character", default="./finemapping_output.txt",
@@ -42,7 +42,7 @@ opt <- optparse::parse_args(optparse::OptionParser(option_list=option_list))
 if(FALSE){
   opt = list(phenotype_list = "testdata/monocyte_LPS2.permuted.txt.gz",
              cisdistance = 200000,
-             gds_file = "testdata/Fairfax_2014_GRCh38.filtered.renamed.gds",
+             genotype_matrix = "testdata/Fairfax_2014_dosage.tsv.gz",
              covariates = "testdata/monocyte_LPS2.covariates.txt",
              expression_matrix = "testdata/Fairfax_2014.HumanHT-12_V4_norm_exprs.tsv.gz",
              sample_meta = "testdata/Fairfax_2014.tsv",
@@ -95,7 +95,7 @@ splitIntoChunks <- function(chunk_number, n_chunks, n_total){
   return(selected_batch)
 }
 
-finemapPhenotype <- function(phenotype_id, se, variant_info, gds_file, covariates, cis_distance){
+finemapPhenotype <- function(phenotype_id, se, genotype_file, covariates, cis_distance){
   message("Processing phenotype: ", phenotype_id)
   
   #Extract phenotype from SE
@@ -108,12 +108,11 @@ finemapPhenotype <- function(phenotype_id, se, variant_info, gds_file, covariate
   covariates_matrix = covariates[gene_vector$genotype_id,]
   
   #Import genotype matrix
-  genotype_matrix = eQTLUtils::extractGenotypeMatrixFromGDS(
+  genotype_matrix = eQTLUtils::extractGenotypeMatrixFromDosage(
     chr = gene_meta$chromosome, 
     start = gene_meta$phenotype_pos - cis_distance, 
     end = gene_meta$phenotype_pos + cis_distance, 
-    variant_information = variant_info, 
-    gdsfile = gds_file)
+    dosage_file = genotype_file)
   
   #Residualise gene expression
   model_fit = stats::lm.fit(covariates_matrix, gene_vector$phenotype_value_std)
@@ -169,7 +168,6 @@ extractCredibleSets <- function(susie_object){
 expression_matrix = readr::read_tsv(opt$expression_matrix)
 sample_metadata = utils::read.csv(opt$sample_meta, sep = '\t', stringsAsFactors = F)
 phenotype_meta = readr::read_delim(opt$phenotype_meta, delim = "\t", col_types = "ccccciiicciidi")
-variant_info = eQTLUtils::importVariantInformationFromGDS(opt$gds_file)
 covariates_matrix = importQtlmapCovariates(opt$covariates)
 
 #Import list of phenotypes for finemapping
@@ -193,7 +191,7 @@ if (opt$permuted == "true"){
 
 #Set parameters
 cis_distance = opt$cisdistance
-gds_file = opt$gds_file
+genotype_file = opt$genotype_matrix
 study_id = sample_metadata$study[1]
 
 #Make a SummarizedExperiment of the expression data
@@ -216,7 +214,7 @@ selected_qtl_group = eQTLUtils::subsetSEByColumnValue(se, "qtl_group", opt$qtl_g
 
 #Apply finemapping to all genes
 results = purrr::map(selected_phenotypes, ~finemapPhenotype(., selected_qtl_group, 
-                                                            variant_info, gds_file, covariates_matrix, cis_distance))
+                                                            genotype_file, covariates_matrix, cis_distance))
 
 #Extract credible sets from finemapping results
 cs_df = purrr::map_df(results, extractCredibleSets, .id = "phenotype_id") 
