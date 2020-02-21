@@ -154,9 +154,17 @@ extractCredibleSets <- function(susie_object){
   set_ids = rownames(purity_res)
   purity_df = dplyr::as_tibble(purity_res) %>%
     dplyr::mutate(cs_id = rownames(purity_res))
+  
+  #Extract betas and standard errors
+  mean_vec = susieR::susie_get_posterior_mean(susie_object)
+  sd_vec = susieR::susie_get_posterior_sd(susie_object)
+  posterior_df = dplyr::tibble(variant_id = names(mean_vec), 
+                               posterior_mean = mean_vec, 
+                               posterior_sd = sd_vec)
 
   if(nrow(df) > 0 & nrow(purity_df) > 0){
-    res_df = dplyr::left_join(df, purity_df, by = "cs_id")
+    res_df = dplyr::left_join(df, purity_df, by = "cs_id") %>%
+      dplyr::left_join(posterior_df, by = "variant_id")
   } else{
     res_df = df
   }
@@ -216,16 +224,25 @@ selected_qtl_group = eQTLUtils::subsetSEByColumnValue(se, "qtl_group", opt$qtl_g
 results = purrr::map(selected_phenotypes, ~finemapPhenotype(., selected_qtl_group, 
                                                             genotype_file, covariates_matrix, cis_distance))
 
+#Define fine-mapped regions
+region_df = dplyr::transmute(phenotype_list, phenotype_id, finemapped_region = paste0("chr", chromosome, ":", 
+                                                                                      phenotype_pos - cis_distance, "-",
+                                                                                      phenotype_pos + cis_distance))
 #Extract credible sets from finemapping results
 cs_df = purrr::map_df(results, extractCredibleSets, .id = "phenotype_id") 
 if(nrow(cs_df) > 0){
   cs_df = dplyr::group_by(cs_df, phenotype_id, cs_id) %>%
+    dplyr::left_join(region_df, by = "phenotype_id") %>%
     dplyr::mutate(cs_size = n()) %>%
     dplyr::ungroup() %>%
     tidyr::separate(variant_id, c("chr", "pos", "ref", "alt"),sep = "_", remove = FALSE) %>%
     dplyr::mutate(chr = stringr::str_remove_all(chr, "chr")) %>%
-    dplyr::transmute(phenotype_id, variant_id, cs_id, chr, pos, ref, alt, pip, z, cs_min_r2 = min.abs.corr, cs_avg_r2 = mean.abs.corr, cs_size)
+    dplyr::mutate(cs_index = cs_id) %>%
+    dplyr::mutate(cs_id = paste(phenotype_id, cs_index, sep = "_")) %>%
+    dplyr::transmute(phenotype_id, variant_id, chr, pos, ref, alt, cs_id, cs_index, finemapped_region, pip, z, cs_min_r2 = min.abs.corr, cs_avg_r2 = mean.abs.corr, cs_size, posterior_mean, posterior_sd)
 }
+
+
 write.table(cs_df, opt$outtxt, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
 
 
