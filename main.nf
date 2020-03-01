@@ -35,7 +35,7 @@ process vcf_to_dosage{
         csvtk transpose header.tsv -T | gzip > header_row.tsv.gz
 
         #Extract dosage and merge
-        bcftools +dosage chr21.vcf.gz -- -t GT | tail -n+2 | gzip > dose_matrix.tsv.gz
+        bcftools +dosage ${vcf} -- -t GT | tail -n+2 | gzip > dose_matrix.tsv.gz
         zcat header_row.tsv.gz dose_matrix.tsv.gz | bgzip > ${vcf.simpleName}.dose.tsv.gz
         tabix -s1 -b2 -e2 -S1 ${vcf.simpleName}.dose.tsv.gz
         """
