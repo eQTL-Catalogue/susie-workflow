@@ -40,17 +40,17 @@ opt <- optparse::parse_args(optparse::OptionParser(option_list=option_list))
 
 #Debugging
 if(FALSE){
-  opt = list(phenotype_list = "testdata/monocyte_LPS2.permuted.txt.gz",
+  opt = list(phenotype_list = "testdata/GEUVADIS_test_ge.permuted.txt.gz",
              cisdistance = 200000,
-             genotype_matrix = "testdata/Fairfax_2014_dosage.tsv.gz",
-             covariates = "testdata/monocyte_LPS2.covariates.txt",
-             expression_matrix = "testdata/Fairfax_2014.HumanHT-12_V4_norm_exprs.tsv.gz",
-             sample_meta = "testdata/Fairfax_2014.tsv",
-             phenotype_meta = "testdata/HumanHT-12_V4_Ensembl_96_phenotype_metadata.tsv.gz",
-             chunk = "3 200",
+             genotype_matrix = "testdata/GEUVADIS_genotypes.dose.tsv.gz",
+             covariates = "testdata/GEUVADIS_test_ge.covariates.txt",
+             expression_matrix = "testdata/GEUVADIS_cqn.tsv",
+             sample_meta = "testdata/GEUVADIS_sample_metadata.tsv",
+             phenotype_meta = "testdata/GEUVADIS_phenotype_metadata.tsv",
+             chunk = "1 1",
              outtxt = "./finemapping_output.txt",
              eqtlutils = "../eQTLUtils/",
-             qtl_group = "monocyte_LPS2",
+             qtl_group = "LCL",
              permuted = "true"
   )
 }
@@ -103,7 +103,7 @@ finemapPhenotype <- function(phenotype_id, se, genotype_file, covariates, cis_di
     dplyr::mutate(phenotype_value_std = (phenotype_value - mean(phenotype_value))/sd(phenotype_value))
   selected_phenotype = phenotype_id
   gene_meta = dplyr::filter(SummarizedExperiment::rowData(se) %>% as.data.frame(), phenotype_id == selected_phenotype)
-  
+
   #Rearrange samples in the covariates matrix
   covariates_matrix = covariates[gene_vector$genotype_id,]
   
@@ -113,7 +113,7 @@ finemapPhenotype <- function(phenotype_id, se, genotype_file, covariates, cis_di
     start = gene_meta$phenotype_pos - cis_distance, 
     end = gene_meta$phenotype_pos + cis_distance, 
     dosage_file = genotype_file)
-  
+
   #Residualise gene expression
   model_fit = stats::lm.fit(covariates_matrix, gene_vector$phenotype_value_std)
   residuals = dplyr::mutate(gene_vector, phenotype_residual = model_fit$residuals) %>%
@@ -123,12 +123,17 @@ finemapPhenotype <- function(phenotype_id, se, genotype_file, covariates, cis_di
   expression_vector = residuals$phenotype_residual_std
   names(expression_vector) = residuals$genotype_id
   gt_matrix = genotype_matrix[,names(expression_vector)]
+  
+  #Exclude variants with no alternative alleles
+  gt_matrix = gt_matrix[rowSums(round(gt_matrix,0)) != 0,]
+
+  #Standardise genotypes
   gt_std = t(gt_matrix - apply(gt_matrix, 1, mean))
   
   fitted <- susieR::susie(gt_std, expression_vector,
                           L = 10,
                           estimate_residual_variance = TRUE, 
-                          estimate_prior_variance = FALSE,
+                          estimate_prior_variance = TRUE,
                           scaled_prior_variance = 0.1,
                           verbose = TRUE,
                           compute_univariate_zscore = TRUE)
@@ -175,7 +180,7 @@ extractCredibleSets <- function(susie_object){
 #Import all files
 expression_matrix = readr::read_tsv(opt$expression_matrix)
 sample_metadata = utils::read.csv(opt$sample_meta, sep = '\t', stringsAsFactors = F)
-phenotype_meta = readr::read_delim(opt$phenotype_meta, delim = "\t", col_types = "ccccciiicciidi")
+phenotype_meta = utils::read.csv(opt$phenotype_meta, sep = "\t", stringsAsFactors = F)
 covariates_matrix = importQtlmapCovariates(opt$covariates)
 
 #Import list of phenotypes for finemapping
