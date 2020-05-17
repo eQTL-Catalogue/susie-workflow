@@ -4,14 +4,14 @@ Nextflow workflow for applying the [Sum of Single Effects (SuSiE)](https://steph
 # Usage
 
 ```bash
-nextflow run main.nf \
- --qtl_results Fairfax_2014.tsv\
- --cisdistance 500000\
- --n_batches 200\
- --eqtlutils '/gpfs/hpc/home/a72094/projects/eQTLUtils'\
- -resume\
- -profile finemapping\
- -executor.queueSize 1
+nextflow run main.nf\
+ --qtl_results testdata/test_input.tsv\
+ --cisdistance 200000 \
+ --vcf_genotype_field GT\
+ --permuted true\
+ --n_batches 2\
+ -resume \
+ -profile finemapping  
 ```
 
 # Dependencies
