@@ -21,8 +21,8 @@ option_list <- list(
                         help="Genotype dosage matrix extracted from VCF.", metavar = "type"),
   optparse::make_option(c("--covariates"), type="character", default=NULL,
                         help="Path to covariates file in QTLtools format.", metavar = "type"),
-  optparse::make_option(c("--outtxt"), type="character", default="./finemapping_output.txt",
-                        help="Name of the output .txt file.", metavar = "type"),
+  optparse::make_option(c("--out_prefix"), type="character", default="./finemapping_output",
+                        help="Prefix of the output files.", metavar = "type"),
   optparse::make_option(c("--qtl_group"), type="character", default=NULL,
                         help="Value of the current qtl_group.", metavar = "type"),
   optparse::make_option(c("--cisdistance"), type="integer", default=1000000, 
@@ -48,7 +48,7 @@ if(FALSE){
              sample_meta = "testdata/GEUVADIS_sample_metadata.tsv",
              phenotype_meta = "testdata/GEUVADIS_phenotype_metadata.tsv",
              chunk = "1 1",
-             outtxt = "./finemapping_output.txt",
+             outtxt = "./finemapping_output",
              eqtlutils = "../eQTLUtils/",
              qtl_group = "LCL",
              permuted = "true"
@@ -141,39 +141,70 @@ finemapPhenotype <- function(phenotype_id, se, genotype_file, covariates, cis_di
   return(fitted)
 }
 
-extractCredibleSets <- function(susie_object){
+extractResults <- function(susie_object){
   credible_sets = susie_object$sets$cs
   cs_list = list()
+  susie_object$sets$purity = dplyr::as_tibble(susie_object$sets$purity) %>%
+    dplyr::mutate(
+      cs_id = rownames(susie_object$sets$purity),
+      cs_size = NA,
+      cs_log10bf = NA,
+      overlapped = NA
+    )
+  added_variants = c()
   for (index in seq_along(credible_sets)){
     cs_variants = credible_sets[[index]]
-    cs_list[[index]] = dplyr::data_frame(cs_id = paste0("L", index),
-                                         pip = susie_object$pip[cs_variants],
-                                         variant_id = susie_object$variant_id[cs_variants],
-                                         z = susie_object$z[cs_variants],
-                                         converged = susie_object$converged)
+    cs_id = susie_object$sets$cs_index[[index]]
+
+    is_overlapped = any(cs_variants %in% added_variants)
+    susie_object$sets$purity$overlapped[index] = is_overlapped
+    susie_object$sets$purity$cs_size[index] = length(cs_variants)
+    susie_object$sets$purity$cs_log10bf[index] = log10(exp(susie_object$lbf[cs_id]))
+    if (!is_overlapped) {
+      cs_list[[index]] = dplyr::tibble(cs_id = paste0("L", cs_id),
+                                       variant_id = susie_object$variant_id[cs_variants])
+      added_variants = append(added_variants, cs_variants)
+    }
   }
   df = purrr::map_df(cs_list, identity)
 
   #Extract purity values for all sets
   purity_res = susie_object$sets$purity
-  set_ids = rownames(purity_res)
   purity_df = dplyr::as_tibble(purity_res) %>%
-    dplyr::mutate(cs_id = rownames(purity_res))
+    dplyr::filter(!overlapped) %>%
+    dplyr::mutate(
+      cs_avg_r2 = mean.abs.corr^2,
+      cs_min_r2 = min.abs.corr^2,
+      low_purity = min.abs.corr < 0.5
+    )  %>%
+    dplyr::select(cs_id, cs_log10bf, cs_avg_r2, cs_min_r2, cs_size, low_purity)
   
   #Extract betas and standard errors
   mean_vec = susieR::susie_get_posterior_mean(susie_object)
   sd_vec = susieR::susie_get_posterior_sd(susie_object)
+  alpha_mat = t(susie_object$alpha)
+  colnames(alpha_mat) = paste0("alpha", seq(ncol(alpha_mat)))
+  mean_mat = t(susie_object$alpha * susie_object$mu) / susie_object$X_column_scale_factors
+  colnames(mean_mat) = paste0("mean", seq(ncol(mean_mat)))
+  sd_mat = sqrt(t(susie_object$alpha * susie_object$mu2 - (susie_object$alpha * susie_object$mu)^2)) / (susie_object$X_column_scale_factors)
+  colnames(sd_mat) = paste0("sd", seq(ncol(sd_mat)))
   posterior_df = dplyr::tibble(variant_id = names(mean_vec), 
+                               pip = susie_object$pip,
+                               z = susie_object$z,
                                posterior_mean = mean_vec, 
-                               posterior_sd = sd_vec)
+                               posterior_sd = sd_vec) %>%
+                 dplyr::bind_cols(purrr::map(list(alpha_mat, mean_mat, sd_mat), dplyr::as_tibble))
 
   if(nrow(df) > 0 & nrow(purity_df) > 0){
-    res_df = dplyr::left_join(df, purity_df, by = "cs_id") %>%
-      dplyr::left_join(posterior_df, by = "variant_id")
+    cs_df = purity_df
+    variant_df = dplyr::left_join(posterior_df, df, by = "variant_id") %>%
+      dplyr::left_join(cs_df, by = "cs_id")
   } else{
-    res_df = df
+    cs_df = NULL
+    variant_df = NULL
   }
-  return(res_df)
+
+  return(list(cs_df = cs_df, variant_df = variant_df))
 }
 
 
@@ -234,20 +265,29 @@ region_df = dplyr::transmute(phenotype_list, phenotype_id, finemapped_region = p
                                                                                       phenotype_pos - cis_distance, "-",
                                                                                       phenotype_pos + cis_distance))
 #Extract credible sets from finemapping results
-cs_df = purrr::map_df(results, extractCredibleSets, .id = "phenotype_id") 
-if(nrow(cs_df) > 0){
-  cs_df = dplyr::group_by(cs_df, phenotype_id, cs_id) %>%
+res = purrr::map(results, extractResults) %>%
+  purrr::transpose()
+
+variant_df <- purrr::map_df(res$variant_df, identity, .id = "phenotype_id") %>%
     dplyr::left_join(region_df, by = "phenotype_id") %>%
-    dplyr::mutate(cs_size = n()) %>%
-    dplyr::ungroup() %>%
     tidyr::separate(variant_id, c("chr", "pos", "ref", "alt"),sep = "_", remove = FALSE) %>%
     dplyr::mutate(chr = stringr::str_remove_all(chr, "chr")) %>%
     dplyr::mutate(cs_index = cs_id) %>%
+  dplyr::mutate(cs_id = paste(phenotype_id, cs_index, sep = "_"))
+
+cs_df <- purrr::map_df(res$cs_df, identity, .id = "phenotype_id")
+if(nrow(cs_df) > 0){
+  cs_df = dplyr::left_join(cs_df, region_df, by = "phenotype_id") %>%
+    dplyr::mutate(cs_index = cs_id) %>%
     dplyr::mutate(cs_id = paste(phenotype_id, cs_index, sep = "_")) %>%
-    dplyr::transmute(phenotype_id, variant_id, chr, pos, ref, alt, cs_id, cs_index, finemapped_region, pip, z, cs_min_r2 = min.abs.corr, cs_avg_r2 = mean.abs.corr, cs_size, posterior_mean, posterior_sd)
+    dplyr::select(phenotype_id, cs_id, cs_index, finemapped_region, cs_log10bf, cs_avg_r2, cs_min_r2, cs_size, low_purity)
+
+  in_cs_variant_df <- dplyr::filter(variant_df, !is.na(cs_index) & !low_purity) %>%
+    dplyr::select(phenotype_id, variant_id, chr, pos, ref, alt, cs_id, cs_index, finemapped_region, pip, z, cs_min_r2, cs_avg_r2, cs_size, posterior_mean, posterior_sd)
 }
 
+variant_df <- dplyr::select(variant_df, phenotype_id, variant_id, chr, pos, ref, alt, cs_id, cs_index, low_purity, finemapped_region, pip, z, posterior_mean, posterior_sd, alpha1:sd10)
 
-write.table(cs_df, opt$outtxt, sep = "\t", quote = FALSE, row.names = FALSE, col.names = FALSE)
-
-
+write.table(cs_df, paste0(opt$out_prefix, ".cred.txt"), sep = "\t", quote = FALSE, row.names = FALSE, col.names = TRUE)
+write.table(variant_df, paste0(opt$out_prefix, ".snp.txt"), sep = "\t", quote = FALSE, row.names = FALSE, col.names = TRUE)
+write.table(in_cs_variant_df, paste0(opt$out_prefix, ".txt"), sep = "\t", quote = FALSE, row.names = FALSE, col.names = TRUE)
