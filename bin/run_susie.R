@@ -100,12 +100,12 @@ finemapPhenotype <- function(phenotype_id, se, genotype_file, covariates, cis_di
   
   #Extract phenotype from SE
   gene_vector = eQTLUtils::extractPhentypeFromSE(phenotype_id, se, "counts") %>%
-    dplyr::mutate(phenotype_value_std = (phenotype_value - mean(phenotype_value))/sd(phenotype_value))
+    dplyr::mutate(phenotype_value_std = qnorm((rank(phenotype_value, na.last = "keep") - 0.5) / sum(!is.na(phenotype_value))))
   selected_phenotype = phenotype_id
   gene_meta = dplyr::filter(SummarizedExperiment::rowData(se) %>% as.data.frame(), phenotype_id == selected_phenotype)
 
   #Rearrange samples in the covariates matrix
-  covariates_matrix = covariates[gene_vector$genotype_id,]
+  covariates_matrix = cbind(covariates[gene_vector$genotype_id,], 1)
   
   #Import genotype matrix
   genotype_matrix = eQTLUtils::extractGenotypeMatrixFromDosage(
@@ -114,14 +114,11 @@ finemapPhenotype <- function(phenotype_id, se, genotype_file, covariates, cis_di
     end = gene_meta$phenotype_pos + cis_distance, 
     dosage_file = genotype_file)
 
-  #Residualise gene expression
-  model_fit = stats::lm.fit(covariates_matrix, gene_vector$phenotype_value_std)
-  residuals = dplyr::mutate(gene_vector, phenotype_residual = model_fit$residuals) %>%
-    dplyr::mutate(phenotype_residual_std = (phenotype_residual - mean(phenotype_residual))/sd(phenotype_residual))
+  #Residualise gene expression and genotype matrix
+  hat = diag(nrow(covariates_matrix)) - covariates_matrix %*% solve(crossprod(covariates_matrix)) %*% t(covariates_matrix)
+  expression_vector = hat %*% gene_vector$phenotype_value_std
+  names(expression_vector) = gene_vector$genotype_id
   
-  #Fit finemapping model
-  expression_vector = residuals$phenotype_residual_std
-  names(expression_vector) = residuals$genotype_id
   gt_matrix = genotype_matrix[,names(expression_vector)]
   
   #Exclude variants with no alternative alleles
@@ -129,14 +126,17 @@ finemapPhenotype <- function(phenotype_id, se, genotype_file, covariates, cis_di
 
   #Standardise genotypes
   gt_std = t(gt_matrix - apply(gt_matrix, 1, mean))
+  gt_hat = hat %*% gt_std
   
-  fitted <- susieR::susie(gt_std, expression_vector,
+  # Fit finemapping model
+  fitted <- susieR::susie(gt_hat, expression_vector,
                           L = 10,
                           estimate_residual_variance = TRUE, 
                           estimate_prior_variance = TRUE,
                           scaled_prior_variance = 0.1,
                           verbose = TRUE,
-                          compute_univariate_zscore = TRUE)
+                          compute_univariate_zscore = TRUE,
+                          min_abs_corr = 0)
   fitted$variant_id = rownames(gt_matrix)
   return(fitted)
 }
