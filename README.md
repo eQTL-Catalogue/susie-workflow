@@ -16,3 +16,7 @@ nextflow run main.nf\
 
 # Dependencies
 All of the dependencies of the workflow are listed in the [Dockerfile](https://github.com/kauralasoo/susie-workflow/blob/master/Dockerfile). Docker container is available from [kauralasoo/susie-finemapping](https://hub.docker.com/r/kauralasoo/susie-finemapping).
+
+# Contributors
+* Kaur Alasoo
+* Masahiro Kanai
