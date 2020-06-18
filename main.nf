@@ -7,10 +7,10 @@ Channel.fromPath(params.qtl_results)
 
 process vcf_to_dosage{
     input:
-    set qtl_subset, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates) from qtl_results_ch
+    tuple qtl_subset, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates) from qtl_results_ch
 
     output:
-    set qtl_subset, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file("${vcf.simpleName}.dose.tsv.gz"), file("${vcf.simpleName}.dose.tsv.gz.tbi") into susie_input_ch
+    tuple qtl_subset, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file("${vcf.simpleName}.dose.tsv.gz"), file("${vcf.simpleName}.dose.tsv.gz.tbi") into susie_input_ch
 
     script:
     if(params.vcf_genotype_field == 'DS'){
@@ -45,11 +45,11 @@ process vcf_to_dosage{
 process run_susie{
 
     input:
-    set qtl_subset, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file(genotype_matrix), file(genotype_matrix_index) from susie_input_ch
+    tuple qtl_subset, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file(genotype_matrix), file(genotype_matrix_index) from susie_input_ch
     each batch_index from 1..params.n_batches
 
     output:
-    set qtl_subset, file("${qtl_subset}.${batch_index}_${params.n_batches}.txt"), file("${qtl_subset}.${batch_index}_${params.n_batches}.cred.txt"), file("${qtl_subset}.${batch_index}_${params.n_batches}.snp.txt") into finemapping_ch
+    tuple qtl_subset, file("${qtl_subset}.${batch_index}_${params.n_batches}.txt"), file("${qtl_subset}.${batch_index}_${params.n_batches}.cred.txt"), file("${qtl_subset}.${batch_index}_${params.n_batches}.snp.txt") into finemapping_ch
 
     script:
     """
@@ -73,10 +73,10 @@ process merge_susie{
     publishDir "${params.outdir}/susie_full/", mode: 'copy', pattern: "*.snp.txt.gz"
 
     input:
-    set qtl_subset, file(in_cs_variant_batch_names), file(credible_set_batch_names), file(variant_batch_names) from finemapping_ch.groupTuple()
+    tuple qtl_subset, file(in_cs_variant_batch_names), file(credible_set_batch_names), file(variant_batch_names) from finemapping_ch.groupTuple()
 
     output:
-    set file("${qtl_subset}.purity_filtered.txt.gz"), file("${qtl_subset}.cred.txt.gz"), file("${qtl_subset}.snp.txt.gz") into susie_merged_ch
+    tuple file("${qtl_subset}.purity_filtered.txt.gz"), file("${qtl_subset}.cred.txt.gz"), file("${qtl_subset}.snp.txt.gz") into susie_merged_ch
 
     script:
     """
