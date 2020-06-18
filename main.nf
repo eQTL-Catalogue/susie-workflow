@@ -90,7 +90,9 @@ process run_susie{
 }
 
 process merge_susie{
-    publishDir "${params.outdir}/susie/", mode: 'copy', pattern: "*.txt.gz"
+    publishDir "${params.outdir}/susie/", mode: 'copy', pattern: "*.purity_filtered.txt.gz"
+    publishDir "${params.outdir}/susie_full/", mode: 'copy', pattern: "*.cred.txt.gz"
+    publishDir "${params.outdir}/susie_full/", mode: 'copy', pattern: "*.snp.txt.gz"
 
     input:
     set study_qtl_group_quant, in_cs_variant_batch_names, credible_set_batch_names, variant_batch_names from finemapping_ch.groupTuple()
@@ -100,7 +102,7 @@ process merge_susie{
 
     script:
     """
-    awk 'NR == 1 || FNR > 1{print}' ${in_cs_variant_batch_names.join(' ')} | bgzip -c > ${study_qtl_group_quant}.txt.gz
+    awk 'NR == 1 || FNR > 1{print}' ${in_cs_variant_batch_names.join(' ')} | bgzip -c > ${study_qtl_group_quant}.purity_filtered.txt.gz
     awk 'NR == 1 || FNR > 1{print}' ${credible_set_batch_names.join(' ')} | bgzip -c > ${study_qtl_group_quant}.cred.txt.gz
     awk 'NR == 1 || FNR > 1{print}' ${variant_batch_names.join(' ')} | bgzip -c > ${study_qtl_group_quant}.snp.txt.gz
     """
