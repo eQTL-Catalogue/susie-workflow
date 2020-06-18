@@ -98,7 +98,7 @@ process merge_susie{
     set study_qtl_group_quant, in_cs_variant_batch_names, credible_set_batch_names, variant_batch_names from finemapping_ch.groupTuple()
 
     output:
-    set file("${study_qtl_group_quant}.txt.gz"), file("${study_qtl_group_quant}.cred.txt.gz"), file("${study_qtl_group_quant}.snp.txt.gz") into susie_merged_ch
+    set file("${study_qtl_group_quant}.purity_filtered.txt.gz"), file("${study_qtl_group_quant}.cred.txt.gz"), file("${study_qtl_group_quant}.snp.txt.gz") into susie_merged_ch
 
     script:
     """
