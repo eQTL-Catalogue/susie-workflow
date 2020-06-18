@@ -70,7 +70,7 @@ process run_susie{
     each batch_index from 1..params.n_batches
 
     output:
-    set val("${study}.${qtl_group}.${quant_method}"), file("${study}.${qtl_group}.${quant_method}.${batch_index}_${params.n_batches}.txt") into finemapping_ch
+    set val("${study}.${qtl_group}.${quant_method}"), file("${study}.${qtl_group}.${quant_method}.${batch_index}_${params.n_batches}.txt"), file("${study}.${qtl_group}.${quant_method}.${batch_index}_${params.n_batches}.cred.txt"), file("${study}.${qtl_group}.${quant_method}.${batch_index}_${params.n_batches}.snp.txt") into finemapping_ch
 
     script:
     """
@@ -82,7 +82,7 @@ process run_susie{
      --genotype_matrix ${genotype_matrix}\
      --chunk '${batch_index} ${params.n_batches}'\
      --cisdistance ${params.cisdistance}\
-     --outtxt '${study}.${qtl_group}.${quant_method}.${batch_index}_${params.n_batches}.txt'\
+     --out_prefix '${study}.${qtl_group}.${quant_method}.${batch_index}_${params.n_batches}'\
      --qtl_group ${qtl_group}\
      --eqtlutils ${params.eqtlutils}\
      --permuted ${params.permuted}
@@ -93,16 +93,16 @@ process merge_susie{
     publishDir "${params.outdir}/susie/", mode: 'copy', pattern: "*.txt.gz"
 
     input:
-    set study_qtl_group_quant, credible_set_batch_names from finemapping_ch.groupTuple()
+    set study_qtl_group_quant, in_cs_variant_batch_names, credible_set_batch_names, variant_batch_names from finemapping_ch.groupTuple()
 
     output:
-    file("${study_qtl_group_quant}.txt.gz") into susie_merged_ch
+    file("${study_qtl_group_quant}.txt.gz"), file("${study_qtl_group_quant}.cred.txt.gz"), file("${study_qtl_group_quant}.snp.txt.gz") into susie_merged_ch
 
     script:
     """
-    echo 'phenotype_id\tvariant_id\tchr\tpos\tref\talt\tcs_id\tcs_index\tfinemapped_region\tpip\tz\tcs_min_r2\tcs_avg_r2\tcs_size\tposterior_mean\tposterior_sd' > ${study_qtl_group_quant}.txt
-    cat ${credible_set_batch_names.join(' ')} >> ${study_qtl_group_quant}.txt
-    gzip ${study_qtl_group_quant}.txt
+    awk 'NR == 1 || FNR > 1{print}' ${in_cs_variant_batch_names.join(' ')} | bgzip -c > ${study_qtl_group_quant}.txt.gz
+    awk 'NR == 1 || FNR > 1{print}' ${credible_set_batch_names.join(' ')} | bgzip -c > ${study_qtl_group_quant}.cred.txt.gz
+    awk 'NR == 1 || FNR > 1{print}' ${variant_batch_names.join(' ')} | bgzip -c > ${study_qtl_group_quant}.snp.txt.gz
     """
 }
 
