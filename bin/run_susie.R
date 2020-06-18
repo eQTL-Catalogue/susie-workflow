@@ -245,6 +245,11 @@ se = eQTLUtils::makeSummarizedExperimentFromCountMatrix(assay = expression_matri
                                                          quant_method = "gene_counts",
                                                          reformat = FALSE)
 
+#If qtl_group is not specified, then use the first value in the qtl_group column of the sample metadata
+if(is.null(opt$qtl_group)){
+  opt$qtl_group = se$qtl_group[1]
+}
+
 #Split phenotype list into chunks
 chunk_vector = strsplit(opt$chunk, split = " ") %>% unlist() %>% as.numeric()
 chunk_id = chunk_vector[1]

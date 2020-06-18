@@ -83,7 +83,6 @@ process run_susie{
      --chunk '${batch_index} ${params.n_batches}'\
      --cisdistance ${params.cisdistance}\
      --out_prefix '${qtl_subset}.${batch_index}_${params.n_batches}'\
-     --qtl_group ${qtl_group}\
      --eqtlutils ${params.eqtlutils}\
      --permuted ${params.permuted}
     """
@@ -102,9 +101,9 @@ process merge_susie{
 
     script:
     """
-    awk 'NR == 1 || FNR > 1{print}' ${in_cs_variant_batch_names.join(' ')} | bgzip -c > ${study_qtl_group_quant}.purity_filtered.txt.gz
-    awk 'NR == 1 || FNR > 1{print}' ${credible_set_batch_names.join(' ')} | bgzip -c > ${study_qtl_group_quant}.cred.txt.gz
-    awk 'NR == 1 || FNR > 1{print}' ${variant_batch_names.join(' ')} | bgzip -c > ${study_qtl_group_quant}.snp.txt.gz
+    awk 'NR == 1 || FNR > 1{print}' ${in_cs_variant_batch_names.join(' ')} | bgzip -c > ${qtl_subset}.purity_filtered.txt.gz
+    awk 'NR == 1 || FNR > 1{print}' ${credible_set_batch_names.join(' ')} | bgzip -c > ${qtl_subset}.cred.txt.gz
+    awk 'NR == 1 || FNR > 1{print}' ${variant_batch_names.join(' ')} | bgzip -c > ${qtl_subset}.snp.txt.gz
     """
 }
 
