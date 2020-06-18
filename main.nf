@@ -10,7 +10,7 @@ process vcf_to_dosage{
     set qtl_subset, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates) from qtl_results_ch
 
     output:
-    set qtl_subset, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file("${vcf.simpleName}.dose.tsv.gz"), file("${vcf.simpleName}.dose.tsv.gz.tbi") into extract_leads_ch
+    set qtl_subset, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file("${vcf.simpleName}.dose.tsv.gz"), file("${vcf.simpleName}.dose.tsv.gz.tbi") into susie_input_ch
 
     script:
     if(params.vcf_genotype_field == 'DS'){
@@ -40,27 +40,6 @@ process vcf_to_dosage{
         tabix -s1 -b2 -e2 -S1 ${vcf.simpleName}.dose.tsv.gz
         """
     } 
-}
-
-process extract_leads{
-    publishDir "${params.outdir}/lead_variants/${study}/", mode: 'copy', pattern: "*.lead_variants.txt.gz"
-
-    input:
-    set qtl_subset, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file(genotype_matrix), file(genotype_matrix_index) from extract_leads_ch
-
-    output:
-    set qtl_subset, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file("${phenotype_list.simpleName}.lead_variants.txt.gz"), file(covariates), file(genotype_matrix), file(genotype_matrix_index) into susie_input_ch
-
-    script:
-    if(params.permuted){
-        """
-        zcat ${phenotype_list} | gzip > ${phenotype_list.simpleName}.lead_variants.txt.gz
-        """
-    } else {
-        """
-        zcat ${phenotype_list} | awk '{if(\$14 == 1) print \$0}' | gzip > ${phenotype_list.simpleName}.lead_variants.txt.gz
-        """
-    }
 }
 
 process run_susie{
