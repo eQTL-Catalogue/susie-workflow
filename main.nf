@@ -1,16 +1,16 @@
-// study	qtl_group	quant_method	expression_matrix	phenotype_meta	sample_meta	vcf	phenotype_list	covariates
+// qtl_subset	count_matrix	pheno_meta	sample_meta	vcf	phenotype_list	covariates
 Channel.fromPath(params.qtl_results)
     .ifEmpty { error "Cannot find any qtl_results file in: ${params.qtl_results}" }
     .splitCsv(header: true, sep: '\t', strip: true)
-    .map{row -> [ row.study, row.qtl_group, row.quant_method, file(row.expression_matrix), file(row.phenotype_meta), file(row.sample_meta), file(row.vcf), file(row.phenotype_list), file(row.covariates)]}
+    .map{row -> [ row.qtl_subset, file(row.count_matrix), file(row.pheno_meta), file(row.sample_meta), file(row.vcf), file(row.phenotype_list), file(row.covariates)]}
     .set { qtl_results_ch }
 
 process vcf_to_dosage{
     input:
-    set study, qtl_group, quant_method, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates) from qtl_results_ch
+    set qtl_subset, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates) from qtl_results_ch
 
     output:
-    set study, qtl_group, quant_method, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file("${vcf.simpleName}.dose.tsv.gz"), file("${vcf.simpleName}.dose.tsv.gz.tbi") into extract_leads_ch
+    set qtl_subset, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file("${vcf.simpleName}.dose.tsv.gz"), file("${vcf.simpleName}.dose.tsv.gz.tbi") into extract_leads_ch
 
     script:
     if(params.vcf_genotype_field == 'DS'){
@@ -46,10 +46,10 @@ process extract_leads{
     publishDir "${params.outdir}/lead_variants/${study}/", mode: 'copy', pattern: "*.lead_variants.txt.gz"
 
     input:
-    set study, qtl_group, quant_method, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file(genotype_matrix), file(genotype_matrix_index) from extract_leads_ch
+    set qtl_subset, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file(genotype_matrix), file(genotype_matrix_index) from extract_leads_ch
 
     output:
-    set study, qtl_group, quant_method, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file("${phenotype_list.simpleName}.lead_variants.txt.gz"), file(covariates), file(genotype_matrix), file(genotype_matrix_index) into susie_input_ch
+    set qtl_subset, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file("${phenotype_list.simpleName}.lead_variants.txt.gz"), file(covariates), file(genotype_matrix), file(genotype_matrix_index) into susie_input_ch
 
     script:
     if(params.permuted){
@@ -66,11 +66,11 @@ process extract_leads{
 process run_susie{
 
     input:
-    set study, qtl_group, quant_method, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file(genotype_matrix), file(genotype_matrix_index) from susie_input_ch
+    set qtl_subset, file(expression_matrix), file(phenotype_meta), file(sample_meta), file(vcf), file(phenotype_list), file(covariates), file(genotype_matrix), file(genotype_matrix_index) from susie_input_ch
     each batch_index from 1..params.n_batches
 
     output:
-    set val("${study}.${qtl_group}.${quant_method}"), file("${study}.${qtl_group}.${quant_method}.${batch_index}_${params.n_batches}.txt"), file("${study}.${qtl_group}.${quant_method}.${batch_index}_${params.n_batches}.cred.txt"), file("${study}.${qtl_group}.${quant_method}.${batch_index}_${params.n_batches}.snp.txt") into finemapping_ch
+    set qtl_subset, file("${qtl_subset}.${batch_index}_${params.n_batches}.txt"), file("${qtl_subset}.${batch_index}_${params.n_batches}.cred.txt"), file("${qtl_subset}.${batch_index}_${params.n_batches}.snp.txt") into finemapping_ch
 
     script:
     """
@@ -82,7 +82,7 @@ process run_susie{
      --genotype_matrix ${genotype_matrix}\
      --chunk '${batch_index} ${params.n_batches}'\
      --cisdistance ${params.cisdistance}\
-     --out_prefix '${study}.${qtl_group}.${quant_method}.${batch_index}_${params.n_batches}'\
+     --out_prefix '${qtl_subset}.${batch_index}_${params.n_batches}'\
      --qtl_group ${qtl_group}\
      --eqtlutils ${params.eqtlutils}\
      --permuted ${params.permuted}
@@ -95,10 +95,10 @@ process merge_susie{
     publishDir "${params.outdir}/susie_full/", mode: 'copy', pattern: "*.snp.txt.gz"
 
     input:
-    set study_qtl_group_quant, in_cs_variant_batch_names, credible_set_batch_names, variant_batch_names from finemapping_ch.groupTuple()
+    set qtl_subset, file(in_cs_variant_batch_names), file(credible_set_batch_names), file(variant_batch_names) from finemapping_ch.groupTuple()
 
     output:
-    set file("${study_qtl_group_quant}.purity_filtered.txt.gz"), file("${study_qtl_group_quant}.cred.txt.gz"), file("${study_qtl_group_quant}.snp.txt.gz") into susie_merged_ch
+    set file("${qtl_subset}.purity_filtered.txt.gz"), file("${qtl_subset}.cred.txt.gz"), file("${qtl_subset}.snp.txt.gz") into susie_merged_ch
 
     script:
     """

@@ -1,2 +1,2 @@
-study	qtl_group	quant_method	expression_matrix	phenotype_meta	sample_meta	vcf	phenotype_list	covariates
-GEUVADIS	LCL	gene_counts	testdata/GEUVADIS_cqn.tsv	testdata/GEUVADIS_phenotype_metadata.tsv	testdata/GEUVADIS_sample_metadata.tsv	testdata/GEUVADIS_genotypes.vcf.gz	testdata/GEUVADIS_test_ge.permuted.txt.gz	testdata/GEUVADIS_test_ge.covariates.txt
+qtl_subset	count_matrix	pheno_meta	sample_meta	vcf	phenotype_list	covariates
+GEUVADIS_LCL_ge	testdata/GEUVADIS_cqn.tsv	testdata/GEUVADIS_phenotype_metadata.tsv	testdata/GEUVADIS_sample_metadata.tsv	testdata/GEUVADIS_genotypes.vcf.gz	testdata/GEUVADIS_test_ge.permuted.txt.gz	testdata/GEUVADIS_test_ge.covariates.txt
