@@ -68,7 +68,6 @@ process run_susie{
 }
 
 process merge_susie{
-    publishDir "${params.outdir}/susie/", mode: 'copy', pattern: "*.purity_filtered.txt.gz"
     publishDir "${params.outdir}/susie_full/", mode: 'copy', pattern: "*.cred.txt.gz"
     publishDir "${params.outdir}/susie_full/", mode: 'copy', pattern: "*.snp.txt.gz"
 
@@ -76,13 +75,29 @@ process merge_susie{
     tuple qtl_subset, file(in_cs_variant_batch_names), file(credible_set_batch_names), file(variant_batch_names) from finemapping_ch.groupTuple()
 
     output:
-    tuple file("${qtl_subset}.purity_filtered.txt.gz"), file("${qtl_subset}.cred.txt.gz"), file("${qtl_subset}.snp.txt.gz") into susie_merged_ch
+    tuple qtl_subset, file("${qtl_subset}.txt.gz") into susie_merged_ch
 
     script:
     """
-    awk 'NR == 1 || FNR > 1{print}' ${in_cs_variant_batch_names.join(' ')} | bgzip -c > ${qtl_subset}.purity_filtered.txt.gz
+    awk 'NR == 1 || FNR > 1{print}' ${in_cs_variant_batch_names.join(' ')} | bgzip -c > ${qtl_subset}.txt.gz
     awk 'NR == 1 || FNR > 1{print}' ${credible_set_batch_names.join(' ')} | bgzip -c > ${qtl_subset}.cred.txt.gz
     awk 'NR == 1 || FNR > 1{print}' ${variant_batch_names.join(' ')} | bgzip -c > ${qtl_subset}.snp.txt.gz
+    """
+}
+
+process sort_susie{
+    publishDir "${params.outdir}/susie/", mode: 'copy', pattern: "*.purity_filtered.txt.gz"
+
+    input:
+    tuple qtl_set, file(merged_susie_output) from susie_merged_ch
+
+    output:
+    tuple, file("${qtl_subset}.purity_filtered.txt.gz") into susie_sorted_ch
+
+    script:
+    """
+    gunzip -c ${merged_susie_output} > susie_merged.txt
+    (head -n 1 susie_merged.txt && tail -n +2 susie_merged.txt | sort -k3 -k4n ) | bgzip > ${qtl_subset}.purity_filtered.txt.gz
     """
 }
 
