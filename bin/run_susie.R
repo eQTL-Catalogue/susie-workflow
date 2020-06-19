@@ -170,14 +170,20 @@ extractResults <- function(susie_object){
 
   #Extract purity values for all sets
   purity_res = susie_object$sets$purity
-  purity_df = dplyr::as_tibble(purity_res) %>%
-    dplyr::filter(!overlapped) %>%
-    dplyr::mutate(
-      cs_avg_r2 = mean.abs.corr^2,
-      cs_min_r2 = min.abs.corr^2,
-      low_purity = min.abs.corr < 0.5
-    )  %>%
-    dplyr::select(cs_id, cs_log10bf, cs_avg_r2, cs_min_r2, cs_size, low_purity)
+
+  #Sometimes all the PIP values are 0 and there are no purity values, then skip this step
+  if(nrow(purity_res) > 0){
+    purity_df = dplyr::as_tibble(purity_res) %>%
+      dplyr::filter(!overlapped) %>%
+      dplyr::mutate(
+        cs_avg_r2 = mean.abs.corr^2,
+        cs_min_r2 = min.abs.corr^2,
+        low_purity = min.abs.corr < 0.5
+      )  %>%
+      dplyr::select(cs_id, cs_log10bf, cs_avg_r2, cs_min_r2, cs_size, low_purity) 
+  } else{
+    purity_df = dplyr::tibble()
+  }
   
   #Extract betas and standard errors
   mean_vec = susieR::susie_get_posterior_mean(susie_object)
