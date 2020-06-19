@@ -89,7 +89,7 @@ process sort_susie{
     publishDir "${params.outdir}/susie/", mode: 'copy', pattern: "*.purity_filtered.txt.gz"
 
     input:
-    tuple qtl_subset, file(merged_susie_output) from susie_merged_ch
+    tuple qtl_subset, file(merged_susie_output), file(susie_cred_output), file(susie_snp_output) from susie_merged_ch
 
     output:
     tuple qtl_subset, file("${qtl_subset}.purity_filtered.txt.gz") into susie_sorted_ch
