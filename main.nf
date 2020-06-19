@@ -75,7 +75,7 @@ process merge_susie{
     tuple qtl_subset, file(in_cs_variant_batch_names), file(credible_set_batch_names), file(variant_batch_names) from finemapping_ch.groupTuple()
 
     output:
-    tuple qtl_subset, file("${qtl_subset}.txt.gz") into susie_merged_ch
+    tuple qtl_subset, file("${qtl_subset}.txt.gz"), file("${qtl_subset}.cred.txt.gz"), file("${qtl_subset}.snp.txt.gz") into susie_merged_ch
 
     script:
     """
