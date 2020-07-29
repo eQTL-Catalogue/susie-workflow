@@ -72,7 +72,7 @@ process merge_susie{
     publishDir "${params.outdir}/susie_full/", mode: 'copy', pattern: "*.snp.txt.gz"
 
     input:
-    tuple qtl_subset, file(in_cs_variant_batch_names), file(credible_set_batch_names), file(variant_batch_names) from finemapping_ch.groupTuple()
+    tuple qtl_subset, file(in_cs_variant_batch_names), file(credible_set_batch_names), file(variant_batch_names) from finemapping_ch.groupTuple(size: params.n_batches)
 
     output:
     tuple qtl_subset, file("${qtl_subset}.txt.gz"), file("${qtl_subset}.cred.txt.gz"), file("${qtl_subset}.snp.txt.gz") into susie_merged_ch
