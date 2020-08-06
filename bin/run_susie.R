@@ -48,7 +48,7 @@ if(FALSE){
              sample_meta = "testdata/GEUVADIS_sample_metadata.tsv",
              phenotype_meta = "testdata/GEUVADIS_phenotype_metadata.tsv",
              chunk = "1 1",
-             outtxt = "./finemapping_output",
+             out_prefix = "./finemapping_output",
              eqtlutils = "../eQTLUtils/",
              qtl_group = "LCL",
              permuted = "true"
@@ -288,12 +288,15 @@ res = purrr::map(results, extractResults) %>%
   purrr::transpose()
 
 #Extract information about all variants
-variant_df <- purrr::map_df(res$variant_df, identity, .id = "phenotype_id") %>%
+variant_df <- purrr::map_df(res$variant_df, identity, .id = "phenotype_id")
+if(nrow(variant_df) > 0){
+  variant_df <- variant_df %>%
     dplyr::left_join(region_df, by = "phenotype_id") %>%
     tidyr::separate(variant_id, c("chr", "pos", "ref", "alt"),sep = "_", remove = FALSE) %>%
     dplyr::mutate(chr = stringr::str_remove_all(chr, "chr")) %>%
     dplyr::mutate(cs_index = cs_id) %>%
-  dplyr::mutate(cs_id = paste(phenotype_id, cs_index, sep = "_"))
+    dplyr::mutate(cs_id = paste(phenotype_id, cs_index, sep = "_"))
+}
 
 #Extraxt information about credible sets
 cs_df <- purrr::map_df(res$cs_df, identity, .id = "phenotype_id")
@@ -306,10 +309,45 @@ if(nrow(cs_df) > 0){
   #Extract information about variants that belong to a credible set
   in_cs_variant_df <- dplyr::filter(variant_df, !is.na(cs_index) & !low_purity) %>%
     dplyr::select(phenotype_id, variant_id, chr, pos, ref, alt, cs_id, cs_index, finemapped_region, pip, z, cs_min_r2, cs_avg_r2, cs_size, posterior_mean, posterior_sd, cs_log10bf)
+} else{
+  #Initialize empty tibbles with correct column names
+  in_cs_variant_df = dplyr::tibble(
+    phenotype_id = character(),
+    variant_id = character(),
+    chr = numeric(),
+    pos = numeric(),
+    ref = numeric(),
+    alt = numeric(),
+    cs_id = numeric(),
+    cs_index = numeric(),
+    finemapped_region = numeric(),
+    pip = numeric(),
+    z = numeric(),
+    cs_min_r2 = numeric(),
+    cs_avg_r2 = numeric(),
+    cs_size = numeric(),
+    posterior_mean = numeric(),
+    posterior_sd = numeric(),
+    cs_log10bf = numeric()
+  )
+  
+  cs_df = dplyr::tibble(
+    phenotype_id = numeric(),
+    cs_id = numeric(),
+    cs_index = numeric(),
+    finemapped_region = numeric(),
+    cs_log10bf = numeric(),
+    cs_avg_r2 = numeric(),
+    cs_min_r2 = numeric(),
+    cs_size = numeric(),
+    low_purity = numeric()
+  )
 }
 
 #Extract information about all variants
+if(nrow(variant_df) > 0){
 variant_df <- dplyr::select(variant_df, phenotype_id, variant_id, chr, pos, ref, alt, cs_id, cs_index, low_purity, finemapped_region, pip, z, posterior_mean, posterior_sd, alpha1:sd10)
+}
 
 #Export high purity credible set results only
 write.table(in_cs_variant_df, paste0(opt$out_prefix, ".txt"), sep = "\t", quote = FALSE, row.names = FALSE, col.names = TRUE)
@@ -317,3 +355,4 @@ write.table(in_cs_variant_df, paste0(opt$out_prefix, ".txt"), sep = "\t", quote 
 #Export all other results
 write.table(cs_df, paste0(opt$out_prefix, ".cred.txt"), sep = "\t", quote = FALSE, row.names = FALSE, col.names = TRUE)
 write.table(variant_df, paste0(opt$out_prefix, ".snp.txt"), sep = "\t", quote = FALSE, row.names = FALSE, col.names = TRUE)
+
