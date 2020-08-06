@@ -81,6 +81,14 @@ importQtlmapCovariates <- function(covariates_path){
   return(pc_matrix)
 }
 
+importQtlmapPermutedPvalues <- function(perm_path){
+  tbl = read.table(perm_path, check.names = F, header = T, stringsAsFactors = F) %>%
+    dplyr::as_tibble() %>%
+    dplyr::mutate(p_fdr = p.adjust(p_beta, method = "fdr")) %>%
+    dplyr::mutate(group_id = molecular_trait_object_id)
+  return(tbl)
+}
+
 splitIntoBatches <- function(n, batch_size){
   n_batches = ceiling(n/batch_size)
   batch_ids = rep(seq(1:n_batches), each = batch_size)[1:n]
@@ -222,7 +230,7 @@ covariates_matrix = importQtlmapCovariates(opt$covariates)
 
 #Import list of phenotypes for finemapping
 if (opt$permuted == "true"){
-  phenotype_table = eQTLUtils::importQTLtoolsTable(opt$phenotype_list)
+  phenotype_table = importQtlmapPermutedPvalues(opt$phenotype_list)
   filtered_list = dplyr::filter(phenotype_table, p_fdr < 0.01)
   phenotype_list = dplyr::semi_join(phenotype_meta, filtered_list, by = "group_id")
   message("Number of phenotypes included for analysis: ", nrow(phenotype_list))
