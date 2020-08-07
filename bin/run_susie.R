@@ -40,7 +40,7 @@ opt <- optparse::parse_args(optparse::OptionParser(option_list=option_list))
 
 #Debugging
 if(FALSE){
-  opt = list(phenotype_list = "testdata/GEUVADIS_test_ge.permuted.txt.gz",
+  opt = list(phenotype_list = "testdata/Kasela_2017.T-cell_CD4_microarray.permuted.txt.gz",
              cisdistance = 200000,
              genotype_matrix = "testdata/GEUVADIS_genotypes.dose.tsv.gz",
              covariates = "testdata/GEUVADIS_test_ge.covariates.txt",
@@ -246,6 +246,9 @@ if (opt$permuted == "true"){
   phenotype_list = dplyr::semi_join(phenotype_meta, nominal_leads, by = "phenotype_id")
   message("Number of phenotypes included for analysis: ", nrow(phenotype_list))
 }
+
+#Keep only those phenotypes that are present in the expression matrix
+phenotype_list = dplyr::filter(phenotype_list, phenotype_id %in% expression_matrix$phenotype_id)
 
 #Set parameters
 cis_distance = opt$cisdistance
