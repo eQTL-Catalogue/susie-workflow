@@ -1,6 +1,6 @@
 results
 .DS_Store
-testdata2
+testdata*
 .Rproj.user
 *.Rproj
 .Rhistory
