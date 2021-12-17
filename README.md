@@ -1,6 +1,8 @@
 # susie-workflow
 Nextflow workflow for applying the [Sum of Single Effects (SuSiE)](https://stephenslab.github.io/susieR/) finemapping model to a large number of molecular QTLs.
 
+This workflow has now been merged into the [eQTL-Catalogue/qtlmap](https://github.com/eQTL-Catalogue/qtlmap) workflow and is no longer maintained independetly.
+
 # Usage
 
 ```bash
